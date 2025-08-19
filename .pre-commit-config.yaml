@@ -1,0 +1,59 @@
+# .pre-commit-config.yaml
+# Configuration for pre-commit hooks
+# Install with: pip install pre-commit && pre-commit install
+
+repos:
+  # Built-in pre-commit hooks for basic checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.md$ # Allow trailing spaces in markdown for line breaks
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1000"] # Prevent files larger than 1MB
+
+  - repo: local
+    hooks:
+      - id: todo-warning
+        name: TODO Comment Warning
+        entry: bash
+        args:
+          [
+            -c,
+            'files=$(git diff --cached --name-only --diff-filter=AM | grep -E "\.(py|js|ts|java|cpp|c|h|go|rs)$"); if [ -n "$files" ]; then echo "$files" | xargs grep -Hn "TODO" || echo "✅ No TODOs found"; else echo "✅ No code files staged"; fi',
+          ]
+        language: system
+        always_run: false
+        verbose: true
+
+      # Run black via your pyproject.toml config
+      - id: black-local
+        name: Black (using pyproject.toml config)
+        entry: black
+        args: ["--check", "--diff"]
+        language: system
+        files: \.py$
+        require_serial: false
+
+      # Run isort via your pyproject.toml config
+      - id: isort-local
+        name: isort (using pyproject.toml config)
+        entry: isort
+        args: ["--diff", "--check-only"]
+        language: system
+        files: \.py$
+
+# Global configuration
+default_language_version:
+  python: python3
+
+# Speed up hooks by only running on changed files
+default_stages: [pre-commit]
+
+# Fail fast - stop on first failure
+fail_fast: false # Set to true if you want to stop on first error

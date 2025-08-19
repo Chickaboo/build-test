@@ -1,0 +1,129 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gambit-pairing"
+dynamic = ["version"]
+description = "Fast, fair, and modern tournament management. Open source and cross-platform."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "PyQt6",
+    "beautifulsoup4",
+    "httpx",
+    "packaging",
+    "importlib-resources",
+    "Pillow",  # Required for MSI branding generation
+]
+license = {text = "GPL-3.0-or-later"}
+
+# Authors & maintainers
+authors = [
+    {name = "Chickaboo", email = "support@chickaboo.net"},
+    {name = "Nic", email = "nic@example.com"}
+]
+maintainers = [
+    {name = "Chickaboo", email = "support@chickaboo.net"},
+    {name = "Nic", email = "nic@example.com"}
+]
+
+# Keywords and classifiers
+keywords = ["Gambit", "Open", "Source", "Pairing", "Chess"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+]
+
+# Entry points
+[project.gui-scripts]
+gambit-pairing = "gambitpairing.__main__:main"
+
+
+[project.urls]
+Homepage = "https://www.chickaboo.net/gambit-pairing/"
+Repository = "https://github.com/Chickaboo/gambit-pairing"
+Issues = "https://github.com/Chickaboo/gambit-pairing/issues"
+
+[project.optional-dependencies]
+dev = [
+    "build",
+    "pyinstaller",
+    "black",
+    "isort",
+    "pytest",
+    "pre-commit",
+    "pyright",
+    "PyQt6-stubs",  # Provides better type hints
+]
+
+# Setuptools configuration
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["gambitpairing*"]
+
+[tool.black]
+line-length = 88
+target-version = ["py39", "py310", "py311", "py312", "py313"]
+
+[tool.isort]
+profile = "black"
+ensure_newline_before_comments = true
+
+[tool.setuptools.package-data]
+"gambitpairing.resources" = ["styles.qss"]
+"gambitpairing.resources.icons" = ["*.png", "*.ico", "*.webp", "*.svg"]
+
+# Added for static type-checking support
+[tool.pyright]
+include = ["src", "tests"]
+exclude = [
+    "build",
+    "dist",
+    "msi_build",
+    ".venv",
+    "*.egg-info",
+    "__pycache__"
+]
+venvPath = "."
+venv = ".venv"
+
+# Python settings
+pythonVersion = "3.12"
+pythonPlatform = "All"
+
+# Type checking mode
+typeCheckingMode = "basic"
+
+# Import handling
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportImportCycles = "error"
+reportUnusedImport = "warning"
+
+# PyQt6 compatibility settings
+reportGeneralTypeIssues = "warning"
+reportOptionalMemberAccess = "warning"
+reportAttributeAccessIssue = "warning"
+reportUnknownMemberType = "warning"
+reportIncompatibleMethodOverride = "warning"
+
+# Additional useful settings
+reportUnusedVariable = "warning"
+reportUnusedFunction = "warning"
+reportDuplicateImport = "error"
+
+#  LocalWords:  reportMissingTypeStubs reportUnusedImport venvPath
+#  LocalWords:  reportImportCycles typeCheckingMode beautifulsoup
