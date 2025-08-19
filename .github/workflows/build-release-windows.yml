@@ -147,31 +147,31 @@ jobs:
           exit 1
         }
 
-    - name: Create compressed archives
+    - name: Create compressed archives and rename executables
       shell: pwsh
       run: |
         $version = "${{ steps.get_version.outputs.version }}"
 
-        # Create archive for single-file executable (ZIP for consistency)
-        $oneFileArchive = "gambit-pairing-$version-win64-portable.zip"
-        Compress-Archive -Path "dist\gambit-pairing.exe" -DestinationPath $oneFileArchive -Force
-        echo "onefile_archive=$oneFileArchive" >> $env:GITHUB_ENV
+        # Rename single-file executable to include version (no ZIP needed)
+        $oneFileExe = "gambit-pairing-$version-win64-portable.exe"
+        Copy-Item "dist\gambit-pairing.exe" $oneFileExe
+        echo "onefile_exe=$oneFileExe" >> $env:GITHUB_ENV
 
         # Create archive for single-directory executable
         $oneDirArchive = "gambit-pairing-$version-win64-directory.zip"
         Compress-Archive -Path "dist\gambit-pairing\*" -DestinationPath $oneDirArchive -Force
         echo "onedir_archive=$oneDirArchive" >> $env:GITHUB_ENV
 
-        Write-Host "Created archives:"
-        Write-Host "- Portable (ZIP): $oneFileArchive"
-        Write-Host "- Directory (ZIP): $oneDirArchive"
+        Write-Host "Created release assets:"
+        Write-Host "- Portable EXE: $oneFileExe"
+        Write-Host "- Directory ZIP: $oneDirArchive"
 
     - name: Upload release assets
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          ${{ env.onefile_archive }}
+          ${{ env.onefile_exe }}
           ${{ env.onedir_archive }}
           ${{ env.msi_path }}
       env:
@@ -181,14 +181,14 @@ jobs:
       shell: pwsh
       run: |
         $version = "${{ steps.get_version.outputs.version }}"
-        $oneFileArchive = "${{ env.onefile_archive }}"
+        $oneFileExe = "${{ env.onefile_exe }}"
         $oneDirArchive = "${{ env.onedir_archive }}"
         $msiName = "${{ env.msi_name }}"
 
         Write-Host "=== Build Summary for Gambit Pairing v$version ==="
         Write-Host ""
         Write-Host "Generated Assets:"
-        Write-Host "- Portable Executable: $oneFileArchive"
+        Write-Host "- Portable Executable: $oneFileExe"
         Write-Host "  Single-file executable, run directly without installation"
         Write-Host "- Directory Executable: $oneDirArchive"
         Write-Host "  Directory-based executable with faster startup"
