@@ -152,7 +152,7 @@ class AboutDialog(QDialog):
         layout.addWidget(version_label)
 
         # Description
-        description = QLabel("Fast, fair and modern tournament management HELLO WORLD!")
+        description = QLabel("Fast, fair and modern tournament management HELLO WORLD")
         description.setAlignment(Qt.AlignmentFlag.AlignCenter)
         description.setWordWrap(True)
         description.setStyleSheet("font-size: 10px; line-height: 1.4;")

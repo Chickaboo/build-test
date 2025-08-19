@@ -85,7 +85,13 @@ class UpdateAsset:
     @property
     def is_portable(self) -> bool:
         """Check if this is a portable (single-file) asset."""
-        return "portable" in self.name.lower()
+        name_lower = self.name.lower()
+        # Handle both direct .exe files and ZIP archives containing portable builds
+        return "portable" in name_lower or (
+            name_lower.endswith(".exe")
+            and "directory" not in name_lower
+            and "onedir" not in name_lower
+        )
 
     @property
     def is_directory(self) -> bool:
@@ -119,8 +125,8 @@ class ModernUpdater:
     def __init__(
         self,
         current_version: str,
-        repo_owner: str = "gambit-devs",
-        repo_name: str = "gambit-pairing",
+        repo_owner: str = "Chickaboo",
+        repo_name: str = "build-test",
     ):
         self.current_version = current_version.lstrip("v")
         self.repo_owner = repo_owner
@@ -191,7 +197,7 @@ class ModernUpdater:
         self._notify_status("Checking for updates...")
 
         try:
-            with httpx.Client(timeout=30.0) as client:
+            with httpx.Client(timeout=30.0, follow_redirects=True) as client:
                 response = client.get(self.api_url)
                 response.raise_for_status()
                 self.latest_release = response.json()
@@ -250,7 +256,7 @@ class ModernUpdater:
             if name.endswith((".sha256", ".checksum")):
                 # Download checksum file
                 try:
-                    with httpx.Client(timeout=10.0) as client:
+                    with httpx.Client(timeout=10.0, follow_redirects=True) as client:
                         response = client.get(
                             asset_data.get("browser_download_url", "")
                         )
@@ -300,22 +306,44 @@ class ModernUpdater:
             if msi_assets:
                 return msi_assets[0]
 
-        # Match installation type to asset type
-        for asset in self.available_assets:
-            if (
-                self.installation_type == InstallationType.SINGLE_FILE
-                and asset.is_portable
-            ):
-                return asset
-            elif (
-                self.installation_type == InstallationType.DIRECTORY
-                and asset.is_directory
-            ):
-                return asset
+        # Match installation type to asset type with preference for native formats
+        if self.installation_type == InstallationType.SINGLE_FILE:
+            # Prefer direct .exe files over ZIP archives for portable builds
+            portable_assets = [a for a in self.available_assets if a.is_portable]
+            if portable_assets:
+                # Sort by preference: .exe files first, then .zip files
+                portable_assets.sort(
+                    key=lambda a: (not a.name.lower().endswith(".exe"), a.name)
+                )
+                logger.info(
+                    f"Selected portable asset: {portable_assets[0].name} for single-file installation"
+                )
+                return portable_assets[0]
 
-        # Fallback: return any Windows asset
+        elif self.installation_type == InstallationType.DIRECTORY:
+            # For directory installs, we want ZIP archives containing directory builds
+            directory_assets = [a for a in self.available_assets if a.is_directory]
+            if directory_assets:
+                logger.info(
+                    f"Selected directory asset: {directory_assets[0].name} for directory installation"
+                )
+                return directory_assets[0]
+
+        # Fallback: return any Windows asset (prefer portable over directory)
         windows_assets = [a for a in self.available_assets if a.is_windows]
-        return windows_assets[0] if windows_assets else None
+        if windows_assets:
+            # Sort by preference: portable first, then directory, then MSI
+            windows_assets.sort(
+                key=lambda a: (
+                    not a.is_portable,
+                    not a.is_directory,
+                    not a.is_msi,
+                    a.name,
+                )
+            )
+            return windows_assets[0]
+
+        return None
 
     def get_latest_version(self) -> Optional[str]:
         """Get the latest version string."""
@@ -349,7 +377,7 @@ class ModernUpdater:
         try:
             self._notify_status(f"Downloading {self.selected_asset.name}...")
 
-            with httpx.Client(timeout=120.0) as client:
+            with httpx.Client(timeout=120.0, follow_redirects=True) as client:
                 with client.stream("GET", self.selected_asset.download_url) as response:
                     response.raise_for_status()
 
@@ -426,8 +454,37 @@ class ModernUpdater:
         self.extract_path.mkdir(parents=True, exist_ok=True)
 
         try:
-            with zipfile.ZipFile(self.download_path, "r") as zip_file:
-                zip_file.extractall(self.extract_path)
+            # Handle different file types
+            if self.download_path.suffix.lower() == ".exe":
+                # Direct executable file - just copy it to the extract path
+                exe_name = self.download_path.name
+                # Normalize name to standard executable name for consistency
+                if "portable" in exe_name.lower():
+                    target_name = "gambit-pairing.exe"
+                else:
+                    target_name = exe_name
+
+                shutil.copy2(self.download_path, self.extract_path / target_name)
+                logger.info(f"Copied executable: {exe_name} -> {target_name}")
+
+            elif self.download_path.suffix.lower() == ".zip":
+                # ZIP archive - extract contents
+                with zipfile.ZipFile(self.download_path, "r") as zip_file:
+                    zip_file.extractall(self.extract_path)
+                    logger.info(
+                        f"Extracted ZIP archive with {len(zip_file.namelist())} files"
+                    )
+
+            elif self.download_path.suffix.lower() == ".msi":
+                # MSI installer - just copy it to the extract path
+                shutil.copy2(
+                    self.download_path, self.extract_path / self.download_path.name
+                )
+                logger.info(f"Copied MSI installer: {self.download_path.name}")
+
+            else:
+                logger.error(f"Unsupported file type: {self.download_path.suffix}")
+                return False
 
             # Clean up download
             self.download_path.unlink()
